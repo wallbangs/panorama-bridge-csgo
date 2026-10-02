@@ -25,30 +25,29 @@ MIGI + p_scaleform ──► rebuilt game folder       Panorama Bridge injector 
                        └────────► launch legacy CS:GO ◄───┘
 ```
 
-This repository contains the Bridge, injector, source code, and local archive builder. It does **not** contain Valve assets, HLAE, MIGI, the Scaleform addon, ReShade, or a ready-made `panorama.my.zip`.
+This repository contains the Bridge, injector, a small patch for the tested UI variant, and the local archive builder. It does **not** contain Valve assets, MIGI, the full Scaleform addon, ReShade, or a ready-made `panorama.my.zip`. Setup fetches MIGI and the addon directly from their pinned upstream projects when needed.
 
 ## Quick start
 
-**First time:** Install legacy 32-bit CS:GO, MIGI, Python 3, and a compatible `p_scaleform` addon. Click **Build / Update Build** in MIGI. Double-click **`Setup.cmd`** and accept or correct the suggested paths. Then run **`Launch.cmd` twice**, closing CS:GO between launches: the first run captures your own original Panorama archive; the second builds and loads the classic UI.
+**First time:** Have legacy 32-bit CS:GO and Python 3 installed. Double-click **`Setup.cmd`** and point it at the game. If MIGI is missing, setup downloads it from its official project; run `migi.exe` as administrator once to initialize it, then normally, and run `Setup.cmd` again. Setup downloads the tested UI and resource files from their original projects and applies our seven-file patch. Click **Build / Update Build** in MIGI. Then run **`Launch.cmd` twice**, closing CS:GO between launches: the first run captures your own original Panorama archive; the second builds and loads the classic UI.
 
 **Every time after that:** Start Steam, then double-click **`Launch.cmd`**. It starts the waiting Bridge injector and launches legacy CS:GO with `-insecure -game migi/csgo -console`. Check the old HUD in a local map.
 
-The first-time steps and download links are below. **HLAE is not required.** No game or addon files are included in this repository; the setup builds your improved ZIP locally. Keep `local-settings.json`, `panorama.org.zip`, and `panorama.my.zip` private.
+The detailed steps are below. **HLAE is not required.** The game, MIGI, and the full addon are not redistributed here. Setup downloads pinned third-party files directly from their GitHub projects and verifies their hashes before installation. Keep `local-settings.json`, `panorama.org.zip`, and `panorama.my.zip` private.
 
 ## What you need
 
 1. A working legacy **32-bit** CS:GO installation containing `csgo.exe`.
-2. [MIGI](https://github.com/ZooLSmith/MIGI3) for that game build.
-3. A compatible `p_scaleform` UI addon, obtained separately. The [original addon](https://github.com/abandonedpools/scaleform) documents the older MIGI/HLAE method; other variants may differ.
-4. Python 3, available as either `py -3` or `python` in Command Prompt.
+2. [Python 3 for Windows](https://www.python.org/downloads/windows/), available as either `py -3` or `python` in Command Prompt.
+3. Internet access for the first setup. MIGI and the tested addon are fetched automatically if missing.
 
 Test the unmodified game first. Keep backups of any working addon. Download external tools from their own projects rather than game-file repacks.
 
 ## First-time setup
 
-### 1. Install MIGI beside CS:GO
+### 1. Run Setup.cmd beside your legacy CS:GO installation
 
-Follow [MIGI's installation guide](https://github.com/ZooLSmith/MIGI3). On Windows, `migi.exe` belongs beside `csgo.exe`. Start MIGI and let it create its `migi/csgo` structure:
+Download this Bridge repository, extract it anywhere, and double-click **`Setup.cmd`**. Accept the suggested game path or paste the folder containing legacy `csgo.exe`. If MIGI is missing, setup downloads a hash-verified copy of [MIGI3](https://github.com/ZooLSmith/MIGI3) beside `csgo.exe`; it does not run the EXE for you. Run `migi.exe` as administrator once (MIGI initializes its links), then run it normally and rerun `Setup.cmd`:
 
 ```text
 Counter-Strike Global Offensive/
@@ -57,19 +56,19 @@ Counter-Strike Global Offensive/
 └── migi/csgo/addons/
 ```
 
-### 2. Install the UI addon into MIGI
+### 2. Let setup install the tested UI addon
 
-Extract your separately obtained addon so the folder is exactly:
+If `p_scaleform` is missing, `Setup.cmd` downloads the pinned [awfeel7/Scaleform-UI-CSGO](https://github.com/awfeel7/Scaleform-UI-CSGO) revision directly from GitHub, checks its SHA-256, extracts only its `panorama` and `materials` folders, and applies our seven verified UI changes. It also fetches the matching `resource` folder from the pinned [original Scaleform addon](https://github.com/abandonedpools/scaleform). It does **not** install the upstream HLAE folder or ZIPs. The resulting 906 files match the tested local `p_scaleform` folder, except for non-functional addon metadata. The folder is:
 
 ```text
 Counter-Strike Global Offensive/migi/csgo/addons/p_scaleform/panorama/
 ```
 
-The `panorama` folder should contain `layout`, `scripts`, and `styles`. Avoid an extra wrapper folder such as `addons/Scaleform-UI-CSGO-main/p_scaleform/`. Click **Build / Update Build** in MIGI. Rebuild after every addon change. MIGI's [addon guide](https://zoolsmith.github.io/MIGI3/0_Using_MIGI/1_Installing_addons/) explains the `p_` format.
+Click **Build / Update Build** in MIGI. Rebuild after every addon change. Setup preserves an existing complete `p_scaleform` folder and refuses to overwrite a partial one. If you want the tested variant instead of your existing addon, back it up first and remove it yourself, then rerun setup. MIGI's [addon guide](https://zoolsmith.github.io/MIGI3/0_Using_MIGI/1_Installing_addons/) explains the `p_` format.
 
 ### 3. Run guided setup
 
-Double-click **`Setup.cmd`** in this Bridge folder. It suggests paths for your CS:GO folder, the addon's `panorama` folder, and the local ZIP it will capture from your game. Press Enter to accept each suggestion or paste your actual path. If you already have `%APPDATA%\HLAE\panorama.org.zip` from **your own game**, setup can use that instead and skip the capture launch.
+After MIGI is ready, rerun **`Setup.cmd`**. It uses the installed addon's `panorama` folder automatically and suggests a path for the local ZIP it will capture from your game. Press Enter to accept the suggestion. If you already have `%APPDATA%\HLAE\panorama.org.zip` from **your own game**, setup can use that instead and skip the capture launch.
 
 Setup checks the required files and saves local paths in `local-settings.json` (ignored by Git). If the original ZIP already exists, it builds `panorama.my.zip` immediately. Otherwise, it tells you to launch once to capture it.
 
@@ -162,6 +161,8 @@ If the game crashes, first test the normal Bridge-only launch above. Keep the te
 | MIGI edits do not appear | Rebuild MIGI and confirm `-game migi/csgo` is active. |
 | `Launch.cmd` does not start CS:GO | Start Steam and use the manual launch fallback above. The Bridge injector must be waiting before game launch. |
 | `Setup.cmd` says Python is missing | Install Python 3, then rerun setup. It accepts either the `py` launcher or `python.exe`. |
+| Addon or MIGI download fails or reports a hash mismatch | Retry when GitHub is reachable. Setup refuses to install unexpected revisions; do not bypass the checksums. |
+| Existing `p_scaleform` is incomplete | Back up that folder and repair it, or remove it yourself before rerunning setup. Setup never overwrites it. |
 
 Old addons can also print localization, sound, or map warnings unrelated to the Bridge.
 
@@ -182,6 +183,6 @@ The repository includes `PanoramaBridge.cpp`, an adapted `injector.cpp`, and `mi
 - Injector: adapted from [ReShade's injector](https://github.com/crosire/reshade/blob/main/tools/injector.cpp), copyright Patrick Mours, BSD-3-Clause; see `LICENSE-ReShade.txt`.
 - Hooking: [MinHook](https://github.com/TsudaKageyu/minhook); see `minhook/LICENSE.txt`.
 - Panorama approach: informed by [HLAE's public implementation](https://github.com/advancedfx/advancedfx); no HLAE code or assets are bundled.
-- UI addon: obtained separately. Credit the creators of the variant you use, including the [original Scaleform addon](https://github.com/abandonedpools/scaleform) where applicable.
+- UI addon: fetched directly from [awfeel7/Scaleform-UI-CSGO](https://github.com/awfeel7/Scaleform-UI-CSGO), with resources fetched from [abandonedpools/scaleform](https://github.com/abandonedpools/scaleform). The seven-file patch contains only local UI changes, not the full addon.
 
 Bridge-specific source is under `LICENSE-Bridge.txt`. Third-party components retain their own licenses.

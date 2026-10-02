@@ -2,7 +2,10 @@ param(
     [string]$GameFolder,
     [string]$OriginalZip,
     [string]$AddonFolder,
-    [string]$PythonExe
+    [string]$PythonExe,
+    [string]$AddonArchive,
+    [string]$MigiSourceFile,
+    [string]$ResourceArchive
 )
 
 $ErrorActionPreference = 'Stop'
@@ -33,11 +36,48 @@ try {
     $gameExe = Join-Path $GameFolder 'csgo.exe'
     $migiExe = Join-Path $GameFolder 'migi.exe'
     if (-not (Test-Path -LiteralPath $gameExe -PathType Leaf)) { throw "Legacy csgo.exe not found: $gameExe" }
-    if (-not (Test-Path -LiteralPath $migiExe -PathType Leaf)) { throw "MIGI is missing beside csgo.exe: $migiExe" }
+    if (-not (Test-Path -LiteralPath $migiExe -PathType Leaf)) {
+        Write-Host "`nMIGI is missing. Setup will download the tested official executable from ZooLSmith/MIGI3." -ForegroundColor Cyan
+        & (Join-Path $bridgeFolder 'install_migi.ps1') -GameFolder $GameFolder -SourceFile $MigiSourceFile
+        Write-Host 'After MIGI creates its addons folder, rerun Setup.cmd to finish the UI.' -ForegroundColor Yellow
+        exit 0
+    }
+    if (-not (Test-Path -LiteralPath (Join-Path $GameFolder 'migi\csgo\addons') -PathType Container)) {
+        Write-Host 'MIGI is installed but has not created its addons folder yet.' -ForegroundColor Yellow
+        Write-Host 'Run migi.exe as administrator once, then normally; rerun Setup.cmd afterward.'
+        exit 0
+    }
+
+    $pythonArgs = @()
+    if (-not $PythonExe) {
+        foreach ($candidate in @('py.exe', 'python.exe')) {
+            $command = Get-Command $candidate -ErrorAction SilentlyContinue
+            if (-not $command) { continue }
+            $versionArgs = if ($candidate -eq 'py.exe') { @('-3', '--version') } else { @('--version') }
+            $version = & $command.Source @versionArgs 2>$null
+            if ($LASTEXITCODE -eq 0 -and $version -match '^Python 3\.') {
+                $PythonExe = $command.Source
+                if ($candidate -eq 'py.exe') { $pythonArgs = @('-3') }
+                break
+            }
+        }
+    }
+    if (-not $PythonExe) { throw 'Python 3 not found. Install it from https://www.python.org/downloads/windows/ and run Setup.cmd again.' }
+    if (-not (Test-Path -LiteralPath $PythonExe -PathType Leaf)) { throw "Python executable not found: $PythonExe" }
+    if ([IO.Path]::GetFileName($PythonExe) -ieq 'py.exe') { $pythonArgs = @('-3') }
+    $version = & $PythonExe @pythonArgs --version
+    if ($LASTEXITCODE -ne 0 -or $version -notmatch '^Python 3\.') { throw 'A working Python 3 executable is required.' }
 
     if (-not $AddonFolder) {
-        $guess = Join-Path $GameFolder 'migi\csgo\addons\p_scaleform\panorama'
-        $AddonFolder = Ask-ForPath 'Scaleform addon panorama folder (contains layout, scripts, styles):' $guess
+        $AddonFolder = Join-Path $GameFolder 'migi\csgo\addons\p_scaleform\panorama'
+        if (-not (Test-Path -LiteralPath (Join-Path $AddonFolder 'layout') -PathType Container)) {
+            $addonRoot = Split-Path -Parent $AddonFolder
+            if (Test-Path -LiteralPath $addonRoot) {
+                throw "An incomplete p_scaleform folder already exists: $addonRoot. Back it up or repair it before setup."
+            }
+            Write-Host "`nThe UI addon is missing. Setup will fetch the tested awfeel7/Scaleform-UI-CSGO revision from GitHub." -ForegroundColor Cyan
+            & (Join-Path $bridgeFolder 'install_addon.ps1') -GameFolder $GameFolder -PythonExe $PythonExe -ArchivePath $AddonArchive -ResourceArchivePath $ResourceArchive
+        }
     }
     $AddonFolder = [IO.Path]::GetFullPath($AddonFolder)
     foreach ($part in @('layout', 'scripts', 'styles')) {
@@ -55,26 +95,6 @@ try {
         $OriginalZip = Ask-ForPath 'Original Panorama ZIP (captured locally on first launch; existing HLAE ZIP also works):' $guess
     }
     $OriginalZip = [IO.Path]::GetFullPath($OriginalZip)
-
-    $pythonArgs = @()
-    if (-not $PythonExe) {
-        foreach ($candidate in @('py.exe', 'python.exe')) {
-            $command = Get-Command $candidate -ErrorAction SilentlyContinue
-            if (-not $command) { continue }
-            $versionArgs = if ($candidate -eq 'py.exe') { @('-3', '--version') } else { @('--version') }
-            $version = & $command.Source @versionArgs 2>$null
-            if ($LASTEXITCODE -eq 0 -and $version -match '^Python 3\.') {
-                $PythonExe = $command.Source
-                if ($candidate -eq 'py.exe') { $pythonArgs = @('-3') }
-                break
-            }
-        }
-    }
-    if (-not $PythonExe) { throw 'Python 3 not found. Install Python 3, then run Setup.cmd again.' }
-    if (-not (Test-Path -LiteralPath $PythonExe -PathType Leaf)) { throw "Python executable not found: $PythonExe" }
-    if ([IO.Path]::GetFileName($PythonExe) -ieq 'py.exe') { $pythonArgs = @('-3') }
-    $version = & $PythonExe @pythonArgs --version
-    if ($LASTEXITCODE -ne 0 -or $version -notmatch '^Python 3\.') { throw 'A working Python 3 executable is required.' }
 
     $builder = Join-Path $bridgeFolder 'build_archive.py'
     $output = Join-Path $bridgeFolder 'panorama.my.zip'
