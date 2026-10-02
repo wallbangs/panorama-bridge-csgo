@@ -1,6 +1,7 @@
 panorama.my.zip
 *.zip
 *.log
+local-settings.json
 *.obj
 *.pdb
 *.ilk
