@@ -16,7 +16,7 @@ Panorama Bridge loads a locally built, Scaleform-style Panorama UI archive into 
 ## How the pieces fit
 
 ```text
-Your CS:GO installation ──► original Panorama ZIP ─┐
+Your CS:GO installation ──► locally captured original Panorama ZIP ─┐
                                                    ├── build_archive.py ──► panorama.my.zip
 Scaleform addon's panorama folder ─────────────────┘                       │
                                                                            ▼
@@ -29,21 +29,20 @@ This repository contains the Bridge, injector, source code, and local archive bu
 
 ## Quick start
 
-**First time:** Install legacy 32-bit CS:GO, MIGI, and a compatible `p_scaleform` addon. Click **Build / Update Build** in MIGI. Use HLAE once to extract `panorama.org.zip` from your own game. Then double-click **`Setup.cmd`** and accept or correct the three paths.
+**First time:** Install legacy 32-bit CS:GO, MIGI, Python 3, and a compatible `p_scaleform` addon. Click **Build / Update Build** in MIGI. Double-click **`Setup.cmd`** and accept or correct the suggested paths. Then run **`Launch.cmd` twice**, closing CS:GO between launches: the first run captures your own original Panorama archive; the second builds and loads the classic UI.
 
 **Every time after that:** Start Steam, then double-click **`Launch.cmd`**. It starts the waiting Bridge injector and launches legacy CS:GO with `-insecure -game migi/csgo -console`. Check the old HUD in a local map.
 
-The first-time steps and download links are below. No game or addon files are included in this repository; the setup builds your improved ZIP locally. Keep `local-settings.json` and `panorama.my.zip` private.
+The first-time steps and download links are below. **HLAE is not required.** No game or addon files are included in this repository; the setup builds your improved ZIP locally. Keep `local-settings.json`, `panorama.org.zip`, and `panorama.my.zip` private.
 
 ## What you need
 
 1. A working legacy **32-bit** CS:GO installation containing `csgo.exe`.
 2. [MIGI](https://github.com/ZooLSmith/MIGI3) for that game build.
 3. A compatible `p_scaleform` UI addon, obtained separately. The [original addon](https://github.com/abandonedpools/scaleform) documents the older MIGI/HLAE method; other variants may differ.
-4. [HLAE](https://github.com/advancedfx/advancedfx) **once**, to generate your own original `panorama.org.zip`. It is not used for normal Bridge launches.
-5. Python 3, available as either `py -3` or `python` in Command Prompt.
+4. Python 3, available as either `py -3` or `python` in Command Prompt.
 
-Test the unmodified game first. Keep backups of any working addon and original ZIP. Download external tools from their own projects rather than game-file repacks.
+Test the unmodified game first. Keep backups of any working addon. Download external tools from their own projects rather than game-file repacks.
 
 ## First-time setup
 
@@ -68,29 +67,31 @@ Counter-Strike Global Offensive/migi/csgo/addons/p_scaleform/panorama/
 
 The `panorama` folder should contain `layout`, `scripts`, and `styles`. Avoid an extra wrapper folder such as `addons/Scaleform-UI-CSGO-main/p_scaleform/`. Click **Build / Update Build** in MIGI. Rebuild after every addon change. MIGI's [addon guide](https://zoolsmith.github.io/MIGI3/0_Using_MIGI/1_Installing_addons/) explains the `p_` format.
 
-### 3. Get your original Panorama archive
+### 3. Run guided setup
 
-If `%APPDATA%\HLAE\panorama.org.zip` already exists from **your own game**, keep it and skip the one-time HLAE launch.
+Double-click **`Setup.cmd`** in this Bridge folder. It suggests paths for your CS:GO folder, the addon's `panorama` folder, and the local ZIP it will capture from your game. Press Enter to accept each suggestion or paste your actual path. If you already have `%APPDATA%\HLAE\panorama.org.zip` from **your own game**, setup can use that instead and skip the capture launch.
 
-Otherwise, follow [HLAE's Panorama guide](https://github.com/advancedfx/advancedfx/wiki/How-to-change-Panorama-UI) to run legacy CS:GO once with `-panorama -afxDetourPanorama` in windowed mode. Exit the game and confirm that `%APPDATA%\HLAE\panorama.org.zip` exists. The windowed launch is only for this extraction step. Do not download somebody else's ZIP.
+Setup checks the required files and saves local paths in `local-settings.json` (ignored by Git). If the original ZIP already exists, it builds `panorama.my.zip` immediately. Otherwise, it tells you to launch once to capture it.
 
-### 4. Run guided setup
+### 4. First launch: capture your own original ZIP
 
-Double-click **`Setup.cmd`** in this Bridge folder. It suggests the normal paths for your CS:GO folder, the addon's `panorama` folder, and HLAE's original ZIP. Press Enter to accept each suggestion or paste your actual path. It checks the required files, builds the improved `panorama.my.zip`, and saves only those paths to a local `local-settings.json` file. That file is ignored by Git.
+Start Steam, close any running CS:GO, then double-click **`Launch.cmd`**. The first launch uses the normal UI while the Bridge captures the game's original archive beside its DLL as `panorama.org.zip`. Exit CS:GO fully afterward. The log should say `Captured original Panorama ZIP locally`.
 
-After any addon changes, click **Build / Update Build** in MIGI and run `Setup.cmd` again to rebuild the ZIP.
+### 5. Second launch: build and load the classic UI
 
-If you prefer the manual command, open Command Prompt here and run:
+Double-click **`Launch.cmd`** again. It builds `panorama.my.zip` from the captured archive and your installed addon, then launches CS:GO with `-insecure -game migi/csgo -console`. Check the old HUD in a local map. Future launches use the ready-made local ZIP.
+
+The builder fixes a few old team-menu mismatches and writes a STORE-only ZIP. **Do not repack it with another archiver**: additional ZIP metadata has caused Panorama initialization failures. Keep the original and merged ZIPs on your own PC; do not upload them.
+
+After any addon changes, click **Build / Update Build** in MIGI and run `Setup.cmd` again to rebuild the ZIP. If you prefer a manual builder command, run:
 
 ```bat
-py -3 build_archive.py --original "%APPDATA%\HLAE\panorama.org.zip" --addon "C:\path\to\Counter-Strike Global Offensive\migi\csgo\addons\p_scaleform\panorama"
+py -3 build_archive.py --original "panorama.org.zip" --addon "C:\path\to\Counter-Strike Global Offensive\migi\csgo\addons\p_scaleform\panorama"
 ```
 
 Success prints `Created ...\panorama.my.zip with ... stored file entries`. Keep `panorama.my.zip`, `PanoramaBridge32.dll`, `panorama-inject32.exe`, and `enable-replacement.flag` together in this folder.
 
-The builder merges the original UI with the addon and fixes a few old team-menu mismatches. It writes a STORE-only ZIP with no directory entries. **Do not repack it with another archiver**: additional ZIP metadata has caused Panorama initialization failures.
-
-### 5. Launch with one double-click
+### Everyday launch
 
 Start Steam, close any running CS:GO, then double-click **`Launch.cmd`**. It starts the Bridge injector first and launches `csgo.exe` with `-insecure -game migi/csgo -console`. Do not use this on VAC-protected servers.
 
@@ -105,7 +106,7 @@ panorama-inject32.exe csgo.exe
 
 Leave that window waiting for the game process.
 
-### 6. Manual launch fallback
+### Manual launch fallback
 
 Use MIGI's **Launch MIGI** button, making sure `-insecure` is set. Alternatively, for the legacy CS:GO executable, use these Steam launch options:
 
@@ -151,13 +152,15 @@ If the game crashes, first test the normal Bridge-only launch above. Keep the te
 | Symptom | Check |
 | --- | --- |
 | `Failed to initialize panorama engine` | Exit CS:GO. Rebuild the ZIP from your matching original and addon. Never manually re-compress it. |
+| First launch has the normal UI | Expected when there was no original ZIP. Close the game completely, then run `Launch.cmd` again. |
+| No `panorama.org.zip` after the first launch | Check `PanoramaBridge.log`. Confirm the x86 injector ran before legacy `csgo.exe` and that `CZip archive-load function hooked` appears. |
 | Game starts but classic UI is missing | Check that `panorama.my.zip` and `enable-replacement.flag` are beside the DLL and that the injector ran **before** CS:GO. Read the log. |
 | Injector succeeds but UI is unchanged | Confirm this is legacy 32-bit `csgo.exe`, not CS2. Confirm MIGI's build is current. |
 | Builder says addon is incomplete | Point `--addon` to the inner `p_scaleform/panorama` directory, not the outer download folder or archive. |
 | Builder cannot find expected UI text | The addon variant differs from the tested one. Do not force a mismatched archive; adapt the compatibility patch in `build_archive.py`. |
 | Game works only without the replacement ZIP | Remove `enable-replacement.flag` for Bridge pass-through mode; this isolates archive problems from hook problems. |
 | MIGI edits do not appear | Rebuild MIGI and confirm `-game migi/csgo` is active. |
-| `Launch.cmd` does not start CS:GO | Start Steam and use the manual launch fallback in step 5/6. The Bridge injector must be waiting before game launch. |
+| `Launch.cmd` does not start CS:GO | Start Steam and use the manual launch fallback above. The Bridge injector must be waiting before game launch. |
 | `Setup.cmd` says Python is missing | Install Python 3, then rerun setup. It accepts either the `py` launcher or `python.exe`. |
 
 Old addons can also print localization, sound, or map warnings unrelated to the Bridge.

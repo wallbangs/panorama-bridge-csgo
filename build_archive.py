@@ -2,6 +2,7 @@
 
 import argparse
 from copy import copy
+from uuid import uuid4
 from pathlib import Path
 from zipfile import ZIP_STORED, ZipFile, ZipInfo
 
@@ -44,28 +45,33 @@ def build(original: Path, addon: Path, output: Path) -> None:
     }
     if len(overlays) < 700:
         raise ValueError("Addon directory appears incomplete; select its panorama subfolder")
-    with ZipFile(original) as source:
-        originals = source.infolist()
-        if len(originals) < 700 or any(entry.is_dir() for entry in originals):
-            raise ValueError("Original archive does not match the expected legacy format")
-        with ZipFile(output, "w", compression=ZIP_STORED, allowZip64=False) as target:
-            for entry in originals:
-                file = overlays.pop(entry.filename.casefold(), None)
-                data = file.read_bytes() if file else source.read(entry)
-                target.writestr(copy(entry), patch_ui(entry.filename, data), compress_type=ZIP_STORED)
-            for name, file in sorted(overlays.items()):
-                entry = ZipInfo(name)
-                entry.create_system = 0
-                entry.external_attr = 0
-                target.writestr(entry, patch_ui(name, file.read_bytes()), compress_type=ZIP_STORED)
-    with ZipFile(output) as check:
-        entries = check.infolist()
-        if len(entries) < 700 or any(
-            entry.is_dir() or entry.compress_type != ZIP_STORED or entry.extra
-            for entry in entries
-        ):
-            raise ValueError("Output ZIP verification failed")
+    temporary = output.with_name(f".{output.stem}-{uuid4().hex}.zip")
+    try:
+        with ZipFile(original) as source:
+            originals = source.infolist()
+            if len(originals) < 700 or any(entry.is_dir() for entry in originals):
+                raise ValueError("Original archive does not match the expected legacy format")
+            with ZipFile(temporary, "w", compression=ZIP_STORED, allowZip64=False) as target:
+                for entry in originals:
+                    file = overlays.pop(entry.filename.casefold(), None)
+                    data = file.read_bytes() if file else source.read(entry)
+                    target.writestr(copy(entry), patch_ui(entry.filename, data), compress_type=ZIP_STORED)
+                for name, file in sorted(overlays.items()):
+                    entry = ZipInfo(name)
+                    entry.create_system = 0
+                    entry.external_attr = 0
+                    target.writestr(entry, patch_ui(name, file.read_bytes()), compress_type=ZIP_STORED)
+        with ZipFile(temporary) as check:
+            entries = check.infolist()
+            if len(entries) < 700 or any(
+                entry.is_dir() or entry.compress_type != ZIP_STORED or entry.extra
+                for entry in entries
+            ):
+                raise ValueError("Output ZIP verification failed")
+        temporary.replace(output)
         print(f"Created {output} with {len(entries)} stored file entries")
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":

@@ -44,9 +44,32 @@ static bool read_archive(std::vector<unsigned char> &out)
     return ok;
 }
 
+static void capture_original_archive(void *data, unsigned int size)
+{
+    if (!data || size < 1024 * 1024 || size > 64 * 1024 * 1024 ||
+        std::memcmp(data, "PK\x03\x04", 4) != 0) return;
+    auto *bytes = static_cast<unsigned char *>(data);
+    if (std::memcmp(bytes + 30, "panorama", 8) != 0 ||
+        (bytes[38] != '/' && bytes[38] != '\\')) return;
+    const std::wstring path = base_dir + L"panorama.org.zip";
+    if (GetFileAttributesW(path.c_str()) != INVALID_FILE_ATTRIBUTES) return;
+    HANDLE file = CreateFileW(path.c_str(), GENERIC_WRITE, 0, nullptr,
+                              CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (file == INVALID_HANDLE_VALUE) return;
+    DWORD written = 0;
+    const bool ok = WriteFile(file, data, size, &written, nullptr) && written == size;
+    CloseHandle(file);
+    if (ok) log_message("Captured original Panorama ZIP locally");
+    else {
+        DeleteFileW(path.c_str());
+        log_message("Could not capture original Panorama ZIP");
+    }
+}
+
 static void __fastcall replacement_load_zip(
     void *instance, void *edx, void *original_data, unsigned int original_size)
 {
+    capture_original_archive(original_data, original_size);
     // Substitute only when the flag is present.
     const std::wstring flag_path = base_dir + L"enable-replacement.flag";
     if (GetFileAttributesW(flag_path.c_str()) == INVALID_FILE_ATTRIBUTES) {

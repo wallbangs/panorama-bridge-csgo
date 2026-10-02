@@ -47,13 +47,14 @@ try {
     }
 
     if (-not $OriginalZip) {
-        $guess = Join-Path $env:APPDATA 'HLAE\panorama.org.zip'
-        $OriginalZip = Ask-ForPath 'Original Panorama ZIP extracted from your own game by HLAE:' $guess
+        $localOriginal = Join-Path $bridgeFolder 'panorama.org.zip'
+        $hlaeOriginal = Join-Path $env:APPDATA 'HLAE\panorama.org.zip'
+        $guess = if (Test-Path -LiteralPath $localOriginal -PathType Leaf) { $localOriginal }
+                 elseif (Test-Path -LiteralPath $hlaeOriginal -PathType Leaf) { $hlaeOriginal }
+                 else { $localOriginal }
+        $OriginalZip = Ask-ForPath 'Original Panorama ZIP (captured locally on first launch; existing HLAE ZIP also works):' $guess
     }
     $OriginalZip = [IO.Path]::GetFullPath($OriginalZip)
-    if (-not (Test-Path -LiteralPath $OriginalZip -PathType Leaf)) {
-        throw "Original ZIP not found: $OriginalZip. Follow the one-time HLAE step in README.md."
-    }
 
     $pythonArgs = @()
     if (-not $PythonExe) {
@@ -71,23 +72,29 @@ try {
     }
     if (-not $PythonExe) { throw 'Python 3 not found. Install Python 3, then run Setup.cmd again.' }
     if (-not (Test-Path -LiteralPath $PythonExe -PathType Leaf)) { throw "Python executable not found: $PythonExe" }
+    if ([IO.Path]::GetFileName($PythonExe) -ieq 'py.exe') { $pythonArgs = @('-3') }
     $version = & $PythonExe @pythonArgs --version
     if ($LASTEXITCODE -ne 0 -or $version -notmatch '^Python 3\.') { throw 'A working Python 3 executable is required.' }
 
     $builder = Join-Path $bridgeFolder 'build_archive.py'
     $output = Join-Path $bridgeFolder 'panorama.my.zip'
-    Write-Host "`nBuilding your local archive..." -ForegroundColor Cyan
-    & $PythonExe @pythonArgs $builder --original $OriginalZip --addon $AddonFolder --output $output
-    if ($LASTEXITCODE -ne 0) { throw 'Archive builder failed. No settings were saved.' }
-    if (-not (Test-Path -LiteralPath $output -PathType Leaf)) { throw 'Builder did not create panorama.my.zip.' }
-
     foreach ($name in @('PanoramaBridge32.dll', 'panorama-inject32.exe', 'enable-replacement.flag')) {
         if (-not (Test-Path -LiteralPath (Join-Path $bridgeFolder $name) -PathType Leaf)) {
             throw "Bridge file missing: $name"
         }
     }
-    @{ GameFolder = $GameFolder; OriginalZip = $OriginalZip; AddonFolder = $AddonFolder } |
+    @{ GameFolder = $GameFolder; OriginalZip = $OriginalZip; AddonFolder = $AddonFolder; PythonExe = $PythonExe } |
         ConvertTo-Json | Set-Content -LiteralPath $configFile -Encoding UTF8
+    if (-not (Test-Path -LiteralPath $OriginalZip -PathType Leaf)) {
+        Write-Host "`nNo original ZIP yet. Run Launch.cmd once to capture it from your game." -ForegroundColor Yellow
+        Write-Host 'The first launch uses the normal UI. Close the game, then run Launch.cmd again for the classic UI.'
+        exit 0
+    }
+    Write-Host "`nBuilding your local archive..." -ForegroundColor Cyan
+    & $PythonExe @pythonArgs $builder --original $OriginalZip --addon $AddonFolder --output $output
+    if ($LASTEXITCODE -ne 0) { throw 'Archive builder failed. Check the paths and run Setup.cmd again.' }
+    if (-not (Test-Path -LiteralPath $output -PathType Leaf)) { throw 'Builder did not create panorama.my.zip.' }
+
     Write-Host "`nReady! Run Launch.cmd after MIGI Build / Update Build." -ForegroundColor Green
     Write-Host 'Keep local-settings.json and panorama.my.zip on your PC; do not upload them.'
 } catch {
