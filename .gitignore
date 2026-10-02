@@ -1,0 +1,8 @@
+panorama.my.zip
+*.zip
+*.log
+*.obj
+*.pdb
+*.ilk
+__pycache__/
+.vs/
